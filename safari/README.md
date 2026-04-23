@@ -43,6 +43,47 @@ xcrun safari-web-extension-converter \
 
 Then open the generated project in Xcode and press ⌘R.
 
+## Building via CI (no local Xcode)
+
+If you are on Linux or Windows — or simply prefer not to install Xcode — GitHub
+Actions can build the Safari app for you on a macOS runner.
+
+### Automatic builds
+
+The workflow runs automatically on every push to `main` and on every pull
+request targeting `main`. When a workflow run succeeds, the compiled app is
+available as a downloadable artifact named **ClaudePulse-Safari-macOS**.
+
+### Trigger a build manually
+
+1. Open the repository on GitHub and click the **Actions** tab.
+2. Select **Safari Build** from the left-hand workflow list.
+3. Click **Run workflow**, choose the `main` branch, and click the green
+   **Run workflow** button.
+4. Wait for the run to complete (typically 3–8 minutes), then click into the
+   finished run.
+5. Under the **Artifacts** section at the bottom of the run summary, download
+   **ClaudePulse-Safari-macOS** (a `.zip` containing `Claude Pulse.app`).
+
+### Using the downloaded app
+
+1. Unzip the downloaded archive to get `Claude Pulse.app`.
+2. Move it to your `/Applications` folder (or run it from anywhere).
+3. Launch the app once — it registers the extension with Safari.
+4. Continue with the [Load the extension in Safari](#load-the-extension-in-safari)
+   steps below.
+
+> **Note — unsigned build**: The CI artifact is built without a code-signing
+> identity (`CODE_SIGNING_REQUIRED=NO`). macOS Gatekeeper will block it on
+> first launch. To open it anyway: right-click (or Control-click) `Claude
+> Pulse.app` → **Open** → **Open** in the confirmation dialog. This is safe for
+> local development. The app is **not** suitable for App Store distribution or
+> sharing with other users; for that, see the [Distributing](#distributing)
+> section.
+
+Artifacts are retained for **30 days**. After that, re-trigger the workflow to
+get a fresh build.
+
 ## Load the extension in Safari
 
 1. In Safari, open **Settings → Advanced** and enable
