@@ -2,33 +2,64 @@
 
 Claude Pulse ships as a cross-browser Web Extension. The root `manifest.json`
 already contains the Safari-specific settings, so the same source tree targets
-Chrome, Firefox, and Safari.
+Chrome, Firefox, and Safari — no code changes needed.
 
-Because Safari extensions must be distributed inside a macOS/iOS app, producing
-a Safari build means wrapping the extension in an Xcode project using Apple's
+Because Safari extensions must be distributed inside a macOS app, producing a
+Safari build means wrapping the extension in an Xcode project using Apple's
 `safari-web-extension-converter` tool.
 
 ## Requirements
 
-- macOS 13 or later
-- Xcode 15 or later (with Command Line Tools installed)
 - Safari 16.4 or later on the target device
 
-## Build (one-shot script)
+Depending on how you build:
 
-From the repository root:
+| Path | What you need |
+|------|--------------|
+| GitHub Actions (recommended) | Nothing local — just push to GitHub |
+| `build.sh` (local, no IDE) | macOS + Xcode Command Line Tools (`xcode-select --install`, ~200 MB) |
+| Xcode IDE | macOS + full Xcode (~14 GB) |
 
-```sh
-./safari/build.sh
-```
+---
 
-This runs `xcrun safari-web-extension-converter` on the repository root and
-writes the generated Xcode project to `safari/build/ClaudePulse/`. Open the
-`.xcodeproj` inside that folder, then Build & Run.
+## Option 1 — GitHub Actions (no local Apple tooling needed)
 
-## Build (manual)
+Push your branch (or fork the repo). The workflow at
+`.github/workflows/safari.yml` runs automatically and produces a signed `.app`
+under **Actions → ClaudePulse-Safari** as a downloadable artifact.
 
-If you prefer to run the converter yourself:
+On tagged releases the `.app` is also attached to the GitHub Release.
+
+---
+
+## Option 2 — Command Line Tools only (no Xcode IDE)
+
+1. Install the Command Line Tools (small download, no full IDE required):
+
+   ```sh
+   xcode-select --install
+   ```
+
+2. From the repository root, run the build script:
+
+   ```sh
+   ./safari/build.sh
+   ```
+
+   This calls `safari-web-extension-converter` and then prints the
+   `xcodebuild` command to compile the `.app` without opening Xcode.
+
+3. Run the printed `xcodebuild` command to compile the `.app`.
+
+---
+
+## Option 3 — Xcode IDE
+
+1. Run `./safari/build.sh` (or the manual converter command below).
+2. Open the generated `.xcodeproj` in Xcode.
+3. Press **⌘R** to build and run.
+
+### Manual converter command
 
 ```sh
 xcrun safari-web-extension-converter \
@@ -41,37 +72,35 @@ xcrun safari-web-extension-converter \
   .
 ```
 
-Then open the generated project in Xcode and press ⌘R.
+---
 
 ## Load the extension in Safari
 
 1. In Safari, open **Settings → Advanced** and enable
    *"Show features for web developers"*.
 2. Open **Settings → Developer** and enable
-   *"Allow unsigned extensions"* (this must be re-enabled after each Safari
-   restart for development builds).
-3. Run the generated container app once from Xcode.
-4. Open **Settings → Extensions**, enable **Claude Pulse**, and grant it access
+   *"Allow unsigned extensions"* (re-enable after each Safari restart for
+   development builds).
+3. Run the container app at least once.
+4. Open **Settings → Extensions**, enable **Claude Pulse**, and grant access
    to `claude.ai`.
 
-## Distributing
+---
 
-To ship through the Mac App Store you will need:
+## Distributing via the Mac App Store
+
+To ship through the App Store you will need:
 
 - A paid Apple Developer account.
-- To set the container app's bundle identifier to one you own.
-- Code-signing and notarization configured in Xcode's *Signing & Capabilities*
-  tab.
+- A bundle identifier you own set in Xcode's *Signing & Capabilities* tab.
+- Code-signing and notarization configured in Xcode.
 
-The web-extension assets (manifest + `src/` + `icons/`) ship inside the app
-bundle and are updated only when a new version of the app is released.
+---
 
-## What changed for Safari?
+## Why no code changes?
 
-- `manifest.json` gained a `browser_specific_settings.safari` entry pinning the
-  minimum Safari version to 16.4 (first release with full MV3 parity for the
-  APIs this extension uses: `web_accessible_resources`, content-script
-  injection, and the `browser.runtime.getURL` helper).
-- No runtime code changes were needed — `bridge-client.js` already reads
-  `globalThis.browser?.runtime || globalThis.chrome?.runtime`, which resolves
-  to Safari's `browser` namespace automatically.
+`bridge-client.js` already reads
+`globalThis.browser?.runtime || globalThis.chrome?.runtime`, which resolves to
+Safari's `browser` namespace automatically. All other APIs used
+(`MutationObserver`, `fetch`, `crypto.subtle`, `CustomEvent`) are standard and
+fully supported in Safari 16.4+.

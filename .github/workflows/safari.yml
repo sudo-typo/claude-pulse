@@ -1,0 +1,61 @@
+name: Build Safari Extension
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Convert to Xcode project
+        run: |
+          xcrun safari-web-extension-converter \
+            --project-location safari/build \
+            --app-name "Claude Pulse" \
+            --bundle-identifier com.claudepulse.safari \
+            --swift \
+            --no-open \
+            --force \
+            .
+
+      - name: Build (ad-hoc signed, no App Store)
+        run: |
+          xcodebuild \
+            -project "safari/build/Claude Pulse/Claude Pulse.xcodeproj" \
+            -scheme "Claude Pulse" \
+            -configuration Release \
+            -derivedDataPath safari/build/DerivedData \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package .app for download
+        run: |
+          APP_PATH=$(find safari/build/DerivedData -name "Claude Pulse.app" -maxdepth 6 | head -1)
+          echo "Found app at: $APP_PATH"
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" safari/ClaudePulse-Safari.zip
+
+      - name: Upload artifact (every build)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClaudePulse-Safari
+          path: safari/ClaudePulse-Safari.zip
+          retention-days: 30
+
+      - name: Attach to GitHub Release (tags only)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: safari/ClaudePulse-Safari.zip
